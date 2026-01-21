@@ -216,12 +216,12 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
           // 情况1：两者都没有填关系（无法区分是否同一人）
           if (!currentRelation && !cardRelation) {
             duplicateFound = true;
-            errorMessage = '错误：已存在相同姓名的受益人，请填写关系以区分！\n\nError: A beneficiary with the same name already exists. Please add relationship to distinguish!';
+            errorMessage = '请补充完整受益人信息\n\n已存在相同姓名的受益人，请填写关系以区分。';
           }
           // 情况2：关系也相同（明确是重复）
           else if (currentRelation && cardRelation && currentRelation === cardRelation) {
             duplicateFound = true;
-            errorMessage = '错误：已存在相同姓名和关系的受益人！\n\nError: A beneficiary with the same name and relationship already exists!';
+            errorMessage = '请补充完整受益人信息\n\n已存在相同姓名和关系的受益人。';
           }
         }
       });
@@ -404,13 +404,13 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
 
       // 验证1：资产类型必须选择
       if (!hasValidType) {
-        alert('请补充完整资产项目内容\n\n第 ' + (i + 1) + ' 项资产的"资产类型"未选择。\n请选择资产类型，或删除该资产项。\n\nPlease complete asset information\nAsset #' + (i + 1) + ' type is not selected.\nPlease select asset type or delete this asset.');
+        alert('请补充完整资产项目内容\n\n第 ' + (i + 1) + ' 项资产的"资产类型"未选择，请选择资产类型或删除该资产项。');
         return false;
       }
 
       // 验证2：资产描述必须填写
       if (!assetDescription || assetDescription.length === 0) {
-        alert('请补充完整资产项目内容\n\n第 ' + (i + 1) + ' 项资产的"资产项目"未填写。\n请填写资产的详细描述（如车牌号、地址等），或删除该资产项。\n\nPlease complete asset information\nAsset #' + (i + 1) + ' description is empty.\nPlease fill in the asset description or delete this asset.');
+        alert('请补充完整资产项目内容\n\n第 ' + (i + 1) + ' 项资产的"资产项目"未填写，请填写详细描述或删除该资产项。');
         return false;
       }
 
@@ -427,7 +427,7 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
       for (var j = i + 1; j < assets.length; j++) {
         if (assets[i].type === assets[j].type &&
             assets[i].description === assets[j].description) {
-          alert('请补充完整资产项目内容\n\n第 ' + assets[i].index + ' 项资产和第 ' + assets[j].index + ' 项资产完全相同。\n资产类型：' + assets[i].type + '\n资产描述：' + assets[i].description + '\n\n请修改其中一项使其有所区别，或删除重复的资产。\n\nPlease complete asset information\nAsset #' + assets[i].index + ' and Asset #' + assets[j].index + ' are identical.\nPlease modify one to make it different or delete the duplicate.');
+          alert('请补充完整资产项目内容\n\n第 ' + assets[i].index + ' 项和第 ' + assets[j].index + ' 项资产完全相同，请修改其中一项使其有所区别，或删除重复的资产。');
           return false;
         }
       }
@@ -481,7 +481,7 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
       });
 
       if (!hasName) {
-        alert('错误：第 ' + (i + 1) + ' 个受益人的姓名未填写！\n\n请填写受益人姓名，或删除该受益人。\n\nError: Beneficiary #' + (i + 1) + ' name is empty!\nPlease fill in the beneficiary name or delete this beneficiary.');
+        alert('请补充完整受益人信息\n\n第 ' + (i + 1) + ' 个受益人的姓名未填写，请填写受益人姓名或删除该受益人。');
         return false;
       }
     }
@@ -540,20 +540,30 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
       var isNavigation = false;
       var navigationText = '';
 
-      // 查找是否点击了导航链接或按钮
+      // 只检查button、a标签、或带有导航相关类名的元素
       var checkTarget = originalTarget;
-      for (var i = 0; i < 10 && checkTarget && checkTarget !== document.body; i++) {
-        var text = checkTarget.textContent || '';
-        var trimmedText = text.trim();
+      for (var i = 0; i < 5 && checkTarget && checkTarget !== document.body; i++) {
+        var tagName = checkTarget.tagName;
 
-        // 检查是否是导航项（受益人、分配、执行人、预览等）
-        if (trimmedText === '受益人' || trimmedText === 'Beneficiaries' ||
-            trimmedText === '分配' || trimmedText === 'Distribution' ||
-            trimmedText === '执行人' || trimmedText === 'Executor' ||
-            trimmedText === '预览' || trimmedText === 'Preview') {
-          isNavigation = true;
-          navigationText = trimmedText;
-          break;
+        // 只检查可能是导航的元素（button、a、或有特定属性的元素）
+        if (tagName === 'BUTTON' || tagName === 'A' ||
+            (checkTarget.getAttribute && checkTarget.getAttribute('role') === 'tab')) {
+
+          var text = checkTarget.textContent || '';
+          var trimmedText = text.trim();
+
+          // 检查是否是导航项（受益人、分配、执行人、预览等）
+          // 并且文本长度较短（避免匹配到包含大段内容的元素）
+          if (trimmedText.length < 20) {
+            if (trimmedText === '受益人' || trimmedText === 'Beneficiaries' ||
+                trimmedText === '分配' || trimmedText === 'Distribution' ||
+                trimmedText === '执行人' || trimmedText === 'Executor' ||
+                trimmedText === '预览' || trimmedText === 'Preview') {
+              isNavigation = true;
+              navigationText = trimmedText;
+              break;
+            }
+          }
         }
 
         checkTarget = checkTarget.parentElement;
