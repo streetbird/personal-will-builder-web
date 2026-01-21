@@ -369,11 +369,27 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
       // 检查资产类型
       var select = card.querySelector('select');
       var assetType = '';
+      var hasValidType = false;
+
       if (select) {
-        assetType = select.value || '';
-        var selectedOption = select.options[select.selectedIndex];
-        if (selectedOption) {
-          assetType = selectedOption.text || assetType;
+        // 检查是否选择了有效的选项（不是第一个占位符选项）
+        if (select.selectedIndex > 0) {
+          hasValidType = true;
+          var selectedOption = select.options[select.selectedIndex];
+          if (selectedOption) {
+            assetType = selectedOption.text || select.value || '';
+          }
+        } else if (select.value && select.value !== '' && select.value !== 'placeholder') {
+          // 有些实现可能不使用index，而是通过value判断
+          var selectedOption = select.options[select.selectedIndex];
+          if (selectedOption) {
+            var optionText = selectedOption.text || '';
+            // 如果选项文本不包含"选择"，认为是有效选择
+            if (!optionText.includes('选择') && !optionText.includes('Select') && optionText.trim() !== '') {
+              hasValidType = true;
+              assetType = optionText;
+            }
+          }
         }
       }
 
@@ -384,17 +400,17 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
         assetDescription = textarea.value.trim();
       }
 
-      console.log('Asset ' + (i+1) + ': type="' + assetType + '", description="' + assetDescription + '"');
+      console.log('Asset ' + (i+1) + ': hasValidType=' + hasValidType + ', type="' + assetType + '", description="' + assetDescription + '"');
 
       // 验证1：资产类型必须选择
-      if (!assetType || assetType === '' || assetType.includes('选择') || assetType.includes('Select')) {
-        alert('错误：第 ' + (i + 1) + ' 项资产的"资产类型"未选择！\n\n请选择资产类型，或删除该资产项。\n\nError: Asset #' + (i + 1) + ' type is not selected!\nPlease select asset type or delete this asset.');
+      if (!hasValidType) {
+        alert('请补充完整资产项目内容\n\n第 ' + (i + 1) + ' 项资产的"资产类型"未选择。\n请选择资产类型，或删除该资产项。\n\nPlease complete asset information\nAsset #' + (i + 1) + ' type is not selected.\nPlease select asset type or delete this asset.');
         return false;
       }
 
       // 验证2：资产描述必须填写
       if (!assetDescription || assetDescription.length === 0) {
-        alert('错误：第 ' + (i + 1) + ' 项资产的"资产项目"未填写！\n\n请填写资产的详细描述（如车牌号、地址等），或删除该资产项。\n\nError: Asset #' + (i + 1) + ' description is empty!\nPlease fill in the asset description (e.g., license plate, address) or delete this asset.');
+        alert('请补充完整资产项目内容\n\n第 ' + (i + 1) + ' 项资产的"资产项目"未填写。\n请填写资产的详细描述（如车牌号、地址等），或删除该资产项。\n\nPlease complete asset information\nAsset #' + (i + 1) + ' description is empty.\nPlease fill in the asset description or delete this asset.');
         return false;
       }
 
@@ -411,7 +427,7 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
       for (var j = i + 1; j < assets.length; j++) {
         if (assets[i].type === assets[j].type &&
             assets[i].description === assets[j].description) {
-          alert('错误：第 ' + assets[i].index + ' 项资产和第 ' + assets[j].index + ' 项资产完全相同！\n\n资产类型：' + assets[i].type + '\n资产描述：' + assets[i].description + '\n\n请修改其中一项使其有所区别，或删除重复的资产。\n\nError: Asset #' + assets[i].index + ' and Asset #' + assets[j].index + ' are identical!\nPlease modify one to make it different or delete the duplicate.');
+          alert('请补充完整资产项目内容\n\n第 ' + assets[i].index + ' 项资产和第 ' + assets[j].index + ' 项资产完全相同。\n资产类型：' + assets[i].type + '\n资产描述：' + assets[i].description + '\n\n请修改其中一项使其有所区别，或删除重复的资产。\n\nPlease complete asset information\nAsset #' + assets[i].index + ' and Asset #' + assets[j].index + ' are identical.\nPlease modify one to make it different or delete the duplicate.');
           return false;
         }
       }
@@ -513,41 +529,84 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
     return 'unknown';
   }
 
-  // 拦截"下一步"按钮点击
+  // 拦截导航和"下一步"按钮点击
   function interceptNextButton() {
     // 使用捕获阶段和冒泡阶段双重拦截
     function handleClick(e) {
       var target = e.target;
+      var originalTarget = target;
 
-      // 查找最近的button元素
-      while (target && target.tagName !== 'BUTTON') {
-        target = target.parentElement;
-        if (!target || target === document.body) return;
+      // 检查是否点击了导航元素（顶部菜单）
+      var isNavigation = false;
+      var navigationText = '';
+
+      // 查找是否点击了导航链接或按钮
+      var checkTarget = originalTarget;
+      for (var i = 0; i < 10 && checkTarget && checkTarget !== document.body; i++) {
+        var text = checkTarget.textContent || '';
+        var trimmedText = text.trim();
+
+        // 检查是否是导航项（受益人、分配、执行人、预览等）
+        if (trimmedText === '受益人' || trimmedText === 'Beneficiaries' ||
+            trimmedText === '分配' || trimmedText === 'Distribution' ||
+            trimmedText === '执行人' || trimmedText === 'Executor' ||
+            trimmedText === '预览' || trimmedText === 'Preview') {
+          isNavigation = true;
+          navigationText = trimmedText;
+          break;
+        }
+
+        checkTarget = checkTarget.parentElement;
       }
 
-      if (!target) return;
+      // 查找最近的button元素
+      target = originalTarget;
+      while (target && target.tagName !== 'BUTTON') {
+        target = target.parentElement;
+        if (!target || target === document.body) break;
+      }
 
-      var buttonText = target.textContent || '';
+      var buttonText = target ? (target.textContent || '') : '';
+      var isNextButton = buttonText.includes('下一步') || buttonText.includes('Next');
 
-      // 检查是否是"下一步"按钮
-      if (buttonText.includes('下一步') || buttonText.includes('Next')) {
-        console.log('=== Next button clicked ===');
+      // 如果是导航点击或下一步按钮
+      if (isNavigation || isNextButton) {
+        console.log('=== Navigation clicked:', isNavigation ? navigationText : '下一步 button');
 
         var currentStep = getCurrentStep();
         console.log('Current step:', currentStep);
 
         var shouldPrevent = false;
 
-        // 根据当前步骤执行相应验证
+        // 如果当前在资产步骤
         if (currentStep === 'assets') {
-          console.log('Validating assets...');
-          if (!validateAssets()) {
-            shouldPrevent = true;
+          // 如果点击了后续步骤（受益人、分配、执行人、预览）或下一步按钮，需要验证
+          var isForwardNavigation = isNextButton ||
+                                    navigationText === '受益人' || navigationText === 'Beneficiaries' ||
+                                    navigationText === '分配' || navigationText === 'Distribution' ||
+                                    navigationText === '执行人' || navigationText === 'Executor' ||
+                                    navigationText === '预览' || navigationText === 'Preview';
+
+          if (isForwardNavigation) {
+            console.log('Forward navigation from assets page, validating...');
+            if (!validateAssets()) {
+              shouldPrevent = true;
+            }
           }
-        } else if (currentStep === 'beneficiaries') {
-          console.log('Validating beneficiaries...');
-          if (!validateBeneficiaries()) {
-            shouldPrevent = true;
+        }
+        // 如果当前在受益人步骤
+        else if (currentStep === 'beneficiaries') {
+          // 如果点击了后续步骤或下一步按钮，需要验证
+          var isForwardNavigation = isNextButton ||
+                                    navigationText === '分配' || navigationText === 'Distribution' ||
+                                    navigationText === '执行人' || navigationText === 'Executor' ||
+                                    navigationText === '预览' || navigationText === 'Preview';
+
+          if (isForwardNavigation) {
+            console.log('Forward navigation from beneficiaries page, validating...');
+            if (!validateBeneficiaries()) {
+              shouldPrevent = true;
+            }
           }
         }
 
