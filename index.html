@@ -334,47 +334,86 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
 
   // 验证资产信息
   function validateAssets() {
-    console.log('Validating assets...');
+    console.log('=== Starting Asset Validation ===');
 
-    // 查找所有资产卡片 - 资产卡片包含select（资产类型）和textarea（资产描述）
+    // 更精确地查找资产卡片：查找包含"资产 1"、"资产 2"等标题的卡片
     var assetCards = [];
-    var allCards = document.querySelectorAll('[class*="p-4"]');
+    var allElements = document.querySelectorAll('*');
 
-    allCards.forEach(function(card) {
-      var hasSelect = card.querySelector('select') !== null;
-      var hasTextarea = card.querySelector('textarea') !== null;
-
-      // 如果同时有下拉选择和文本框，很可能是资产卡片
-      if (hasSelect && hasTextarea) {
-        assetCards.push(card);
+    allElements.forEach(function(el) {
+      var text = el.textContent || '';
+      // 查找"资产 1"、"资产 2"等标题
+      if (/^资产\s*\d+$/.test(text.trim()) && el.tagName !== 'BODY' && el.tagName !== 'HTML') {
+        // 找到标题后，向上查找包含整个资产卡片的容器
+        var card = el.closest('[class*="p-4"]');
+        if (card && !assetCards.includes(card)) {
+          assetCards.push(card);
+        }
       }
     });
 
     console.log('Found ' + assetCards.length + ' asset cards');
 
+    if (assetCards.length === 0) {
+      // 如果没有找到资产卡片，说明可能不在资产编辑页面
+      console.log('No asset cards found, skipping validation');
+      return true;
+    }
+
+    var assets = [];
+
     // 检查每个资产卡片
     for (var i = 0; i < assetCards.length; i++) {
       var card = assetCards[i];
 
-      // 检查资产类型是否选择
+      // 检查资产类型
       var select = card.querySelector('select');
-      var selectValue = select ? select.value : '';
+      var assetType = '';
+      if (select) {
+        assetType = select.value || '';
+        var selectedOption = select.options[select.selectedIndex];
+        if (selectedOption) {
+          assetType = selectedOption.text || assetType;
+        }
+      }
 
-      // 检查资产描述是否填写
+      // 检查资产描述（textarea）
       var textarea = card.querySelector('textarea');
-      var textareaValue = textarea ? textarea.value.trim() : '';
+      var assetDescription = '';
+      if (textarea) {
+        assetDescription = textarea.value.trim();
+      }
 
-      console.log('Asset ' + (i+1) + ': select=' + selectValue + ', textarea=' + textareaValue);
+      console.log('Asset ' + (i+1) + ': type="' + assetType + '", description="' + assetDescription + '"');
 
-      // 如果资产类型未选择或资产描述为空
-      if (!selectValue || selectValue === '' || selectValue.includes('选择类型')) {
-        alert('错误：第 ' + (i + 1) + ' 项资产的"资产类型"未选择！\n请选择资产类型或删除该资产项。\n\nError: Asset #' + (i + 1) + ' type is not selected!\nPlease select asset type or delete this asset.');
+      // 验证1：资产类型必须选择
+      if (!assetType || assetType === '' || assetType.includes('选择') || assetType.includes('Select')) {
+        alert('错误：第 ' + (i + 1) + ' 项资产的"资产类型"未选择！\n\n请选择资产类型，或删除该资产项。\n\nError: Asset #' + (i + 1) + ' type is not selected!\nPlease select asset type or delete this asset.');
         return false;
       }
 
-      if (!textareaValue || textareaValue.length === 0) {
-        alert('错误：第 ' + (i + 1) + ' 项资产的"资产项目"未填写！\n请填写资产描述或删除该资产项。\n\nError: Asset #' + (i + 1) + ' description is empty!\nPlease fill in the asset description or delete this asset.');
+      // 验证2：资产描述必须填写
+      if (!assetDescription || assetDescription.length === 0) {
+        alert('错误：第 ' + (i + 1) + ' 项资产的"资产项目"未填写！\n\n请填写资产的详细描述（如车牌号、地址等），或删除该资产项。\n\nError: Asset #' + (i + 1) + ' description is empty!\nPlease fill in the asset description (e.g., license plate, address) or delete this asset.');
         return false;
+      }
+
+      // 保存当前资产信息用于重复检查
+      assets.push({
+        index: i + 1,
+        type: assetType,
+        description: assetDescription
+      });
+    }
+
+    // 验证3：检测重复资产（相同类型+相同描述）
+    for (var i = 0; i < assets.length; i++) {
+      for (var j = i + 1; j < assets.length; j++) {
+        if (assets[i].type === assets[j].type &&
+            assets[i].description === assets[j].description) {
+          alert('错误：第 ' + assets[i].index + ' 项资产和第 ' + assets[j].index + ' 项资产完全相同！\n\n资产类型：' + assets[i].type + '\n资产描述：' + assets[i].description + '\n\n请修改其中一项使其有所区别，或删除重复的资产。\n\nError: Asset #' + assets[i].index + ' and Asset #' + assets[j].index + ' are identical!\nPlease modify one to make it different or delete the duplicate.');
+          return false;
+        }
       }
     }
 
@@ -384,28 +423,29 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
 
   // 验证受益人信息
   function validateBeneficiaries() {
-    // 查找所有受益人卡片
+    console.log('=== Starting Beneficiary Validation ===');
+
+    // 查找受益人卡片：查找包含"受益人 1"、"受益人 2"等标题的卡片
     var beneficiaryCards = [];
-    var allCards = document.querySelectorAll('[class*="p-4"]');
+    var allElements = document.querySelectorAll('*');
 
-    allCards.forEach(function(card) {
-      var inputs = card.querySelectorAll('input');
-      var hasBeneficiaryFields = false;
-
-      inputs.forEach(function(input) {
-        var ph = input.placeholder || '';
-        // 检查是否包含受益人相关的placeholder
-        if (ph.includes('李四') || ph.includes('Jane Doe') ||
-            ph.includes('女儿') || ph.includes('配偶') ||
-            ph.includes('Daughter') || ph.includes('Spouse')) {
-          hasBeneficiaryFields = true;
+    allElements.forEach(function(el) {
+      var text = el.textContent || '';
+      // 查找"受益人 1"、"受益人 2"等标题
+      if (/^受益人\s*\d+$/.test(text.trim()) && el.tagName !== 'BODY' && el.tagName !== 'HTML') {
+        var card = el.closest('[class*="p-4"]');
+        if (card && !beneficiaryCards.includes(card)) {
+          beneficiaryCards.push(card);
         }
-      });
-
-      if (hasBeneficiaryFields) {
-        beneficiaryCards.push(card);
       }
     });
+
+    console.log('Found ' + beneficiaryCards.length + ' beneficiary cards');
+
+    if (beneficiaryCards.length === 0) {
+      console.log('No beneficiary cards found, skipping validation');
+      return true;
+    }
 
     // 检查每个受益人是否至少填写了姓名
     for (var i = 0; i < beneficiaryCards.length; i++) {
@@ -425,18 +465,58 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
       });
 
       if (!hasName) {
-        alert('错误：第 ' + (i + 1) + ' 个受益人的姓名未填写！\n请填写受益人姓名或删除该受益人。\n\nError: Beneficiary #' + (i + 1) + ' name is empty!\nPlease fill in the beneficiary name or delete this beneficiary.');
+        alert('错误：第 ' + (i + 1) + ' 个受益人的姓名未填写！\n\n请填写受益人姓名，或删除该受益人。\n\nError: Beneficiary #' + (i + 1) + ' name is empty!\nPlease fill in the beneficiary name or delete this beneficiary.');
         return false;
       }
     }
 
+    console.log('All beneficiaries validated successfully');
     return true;
+  }
+
+  // 判断当前在哪个步骤
+  function getCurrentStep() {
+    // 方法1：查找步骤标题
+    var stepElements = document.querySelectorAll('*');
+    for (var i = 0; i < stepElements.length; i++) {
+      var text = stepElements[i].textContent || '';
+      if (/^第\d+步/.test(text.trim())) {
+        var stepText = text.trim();
+        console.log('Found step:', stepText);
+
+        if (stepText.includes('资产')) {
+          return 'assets';
+        } else if (stepText.includes('受益人')) {
+          return 'beneficiaries';
+        }
+      }
+    }
+
+    // 方法2：查看页面上是否有资产或受益人的编辑卡片
+    var hasAssetCards = false;
+    var hasBeneficiaryCards = false;
+
+    var allElements = document.querySelectorAll('*');
+    allElements.forEach(function(el) {
+      var text = el.textContent || '';
+      if (/^资产\s*\d+$/.test(text.trim())) {
+        hasAssetCards = true;
+      }
+      if (/^受益人\s*\d+$/.test(text.trim())) {
+        hasBeneficiaryCards = true;
+      }
+    });
+
+    if (hasAssetCards) return 'assets';
+    if (hasBeneficiaryCards) return 'beneficiaries';
+
+    return 'unknown';
   }
 
   // 拦截"下一步"按钮点击
   function interceptNextButton() {
-    // 在捕获阶段拦截
-    document.addEventListener('click', function(e) {
+    // 使用捕获阶段和冒泡阶段双重拦截
+    function handleClick(e) {
       var target = e.target;
 
       // 查找最近的button元素
@@ -448,86 +528,43 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
       if (!target) return;
 
       var buttonText = target.textContent || '';
-      console.log('Button clicked:', buttonText);
 
       // 检查是否是"下一步"按钮
       if (buttonText.includes('下一步') || buttonText.includes('Next')) {
-        console.log('Next button clicked, validating...');
+        console.log('=== Next button clicked ===');
 
-        // 判断当前在哪个页面
-        var pageTitle = document.querySelector('h1, h2, h3');
-        var pageTitleText = pageTitle ? pageTitle.textContent : '';
-        console.log('Page title:', pageTitleText);
+        var currentStep = getCurrentStep();
+        console.log('Current step:', currentStep);
 
-        // 检查页面内容来判断当前页面
-        var pageContent = document.body.textContent || '';
+        var shouldPrevent = false;
 
-        // 如果在资产页面（检查是否有"资产类型"或"资产项目"文本）
-        if (pageTitleText.includes('资产') || pageTitleText.includes('Asset') ||
-            pageContent.includes('资产类型') || pageContent.includes('资产项目')) {
-          console.log('On assets page, validating assets...');
+        // 根据当前步骤执行相应验证
+        if (currentStep === 'assets') {
+          console.log('Validating assets...');
           if (!validateAssets()) {
-            console.log('Asset validation failed, preventing navigation');
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            return false;
+            shouldPrevent = true;
           }
-        }
-
-        // 如果在受益人页面
-        if (pageTitleText.includes('受益人') || pageTitleText.includes('Beneficiar')) {
-          console.log('On beneficiaries page, validating beneficiaries...');
+        } else if (currentStep === 'beneficiaries') {
+          console.log('Validating beneficiaries...');
           if (!validateBeneficiaries()) {
-            console.log('Beneficiary validation failed, preventing navigation');
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            return false;
-          }
-        }
-      }
-    }, true); // 使用捕获阶段
-
-    // 同时在冒泡阶段也拦截，确保万无一失
-    document.addEventListener('click', function(e) {
-      var target = e.target;
-
-      while (target && target.tagName !== 'BUTTON') {
-        target = target.parentElement;
-        if (!target || target === document.body) return;
-      }
-
-      if (!target) return;
-
-      var buttonText = target.textContent || '';
-
-      if (buttonText.includes('下一步') || buttonText.includes('Next')) {
-        var pageContent = document.body.textContent || '';
-
-        if (pageContent.includes('资产类型') || pageContent.includes('资产项目')) {
-          if (!validateAssets()) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            return false;
+            shouldPrevent = true;
           }
         }
 
-        if (pageContent.includes('受益人') && !pageContent.includes('添加受益人')) {
-          var pageTitle = document.querySelector('h1, h2, h3');
-          var pageTitleText = pageTitle ? pageTitle.textContent : '';
-          if (pageTitleText.includes('受益人') || pageTitleText.includes('Beneficiar')) {
-            if (!validateBeneficiaries()) {
-              e.preventDefault();
-              e.stopPropagation();
-              e.stopImmediatePropagation();
-              return false;
-            }
-          }
+        if (shouldPrevent) {
+          console.log('Validation failed, preventing navigation');
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          return false;
         }
       }
-    }, false); // 冒泡阶段
+    }
+
+    // 捕获阶段
+    document.addEventListener('click', handleClick, true);
+    // 冒泡阶段
+    document.addEventListener('click', handleClick, false);
   }
 
   // 页面加载后启动拦截
