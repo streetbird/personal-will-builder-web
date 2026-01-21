@@ -216,12 +216,12 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
           // 情况1：两者都没有填关系（无法区分是否同一人）
           if (!currentRelation && !cardRelation) {
             duplicateFound = true;
-            errorMessage = '请补充完整受益人信息\n\n已存在相同姓名的受益人，请填写关系以区分。';
+            errorMessage = '请补充完整受益人信息';
           }
           // 情况2：关系也相同（明确是重复）
           else if (currentRelation && cardRelation && currentRelation === cardRelation) {
             duplicateFound = true;
-            errorMessage = '请补充完整受益人信息\n\n已存在相同姓名和关系的受益人。';
+            errorMessage = '请补充完整受益人信息';
           }
         }
       });
@@ -404,13 +404,13 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
 
       // 验证1：资产类型必须选择
       if (!hasValidType) {
-        alert('请补充完整资产项目内容\n\n第 ' + (i + 1) + ' 项资产的"资产类型"未选择，请选择资产类型或删除该资产项。');
+        alert('请补充完整资产项目内容');
         return false;
       }
 
       // 验证2：资产描述必须填写
       if (!assetDescription || assetDescription.length === 0) {
-        alert('请补充完整资产项目内容\n\n第 ' + (i + 1) + ' 项资产的"资产项目"未填写，请填写详细描述或删除该资产项。');
+        alert('请补充完整资产项目内容');
         return false;
       }
 
@@ -427,7 +427,7 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
       for (var j = i + 1; j < assets.length; j++) {
         if (assets[i].type === assets[j].type &&
             assets[i].description === assets[j].description) {
-          alert('请补充完整资产项目内容\n\n第 ' + assets[i].index + ' 项和第 ' + assets[j].index + ' 项资产完全相同，请修改其中一项使其有所区别，或删除重复的资产。');
+          alert('请补充完整资产项目内容');
           return false;
         }
       }
@@ -481,7 +481,7 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
       });
 
       if (!hasName) {
-        alert('请补充完整受益人信息\n\n第 ' + (i + 1) + ' 个受益人的姓名未填写，请填写受益人姓名或删除该受益人。');
+        alert('请补充完整受益人信息');
         return false;
       }
     }
@@ -577,11 +577,20 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
       }
 
       var buttonText = target ? (target.textContent || '') : '';
-      var isNextButton = buttonText.includes('下一步') || buttonText.includes('Next');
+      var trimmedButtonText = buttonText.trim();
+      // 严格匹配"下一步"按钮，避免误触发
+      var isNextButton = trimmedButtonText === '下一步' || trimmedButtonText === 'Next' ||
+                         trimmedButtonText.startsWith('下一步') || trimmedButtonText.startsWith('Next');
+
+      // 只有在确认是导航或下一步按钮时才进行验证
+      if (!isNavigation && !isNextButton) {
+        return; // 不是导航或下一步按钮，直接返回
+      }
+
+      console.log('=== Navigation/Next button clicked:', isNavigation ? navigationText : trimmedButtonText);
 
       // 如果是导航点击或下一步按钮
       if (isNavigation || isNextButton) {
-        console.log('=== Navigation clicked:', isNavigation ? navigationText : '下一步 button');
 
         var currentStep = getCurrentStep();
         console.log('Current step:', currentStep);
@@ -630,10 +639,8 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
       }
     }
 
-    // 捕获阶段
+    // 只在捕获阶段拦截，避免重复触发
     document.addEventListener('click', handleClick, true);
-    // 冒泡阶段
-    document.addEventListener('click', handleClick, false);
   }
 
   // 页面加载后启动拦截
