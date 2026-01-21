@@ -228,3 +228,114 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
   });
 })();
 </script>
+<script>
+// 将添加资产和添加受益人按钮移到列表底部
+(function() {
+  'use strict';
+  
+  console.log('Button relocation script loaded');
+  
+  function relocateAddButtons() {
+    // 查找所有包含"添加资产"或"添加受益人"的按钮
+    const buttons = document.querySelectorAll('button');
+    
+    buttons.forEach(function(btn) {
+      const text = btn.textContent || '';
+      const isAddAsset = text.includes('添加资产') || text.includes('Add Asset');
+      const isAddBeneficiary = text.includes('添加受益人') || text.includes('Add Beneficiary');
+      
+      if (!isAddAsset && !isAddBeneficiary) return;
+      if (btn.getAttribute('data-button-relocated') === 'true') return;
+      
+      // 标记原按钮
+      btn.setAttribute('data-button-relocated', 'true');
+      const buttonType = isAddAsset ? 'asset' : 'beneficiary';
+      
+      // 查找包含按钮的卡片容器
+      let container = btn.closest('[class*="space-y-4"]');
+      if (!container) return;
+      
+      // 检查是否已经创建了底部按钮
+      if (container.querySelector('.relocated-add-btn-' + buttonType)) return;
+      
+      // 创建底部按钮容器
+      const bottomContainer = document.createElement('div');
+      bottomContainer.className = 'relocated-add-btn-' + buttonType;
+      bottomContainer.style.cssText = 'margin-top: 1.5rem; display: flex; justify-content: center; width: 100%;';
+      
+      // 创建新按钮（完全克隆原按钮的样式）
+      const newBtn = document.createElement('button');
+      newBtn.className = btn.className;
+      newBtn.innerHTML = btn.innerHTML;
+      newBtn.type = 'button';
+      
+      // 关键：使用 MouseEvent 触发原按钮，确保 React 事件被触发
+      newBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // 创建并分发真实的鼠标点击事件
+        const clickEvent = new MouseEvent('click', {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+          buttons: 1
+        });
+        
+        btn.dispatchEvent(clickEvent);
+      });
+      
+      bottomContainer.appendChild(newBtn);
+      container.appendChild(bottomContainer);
+      
+      // 隐藏原按钮（但保留在DOM中以保持React状态）
+      const originalParent = btn.parentElement;
+      if (originalParent) {
+        originalParent.style.display = 'none';
+      }
+    });
+  }
+  
+  // 延迟执行以确保React已渲染
+  function init() {
+    setTimeout(relocateAddButtons, 800);
+    setTimeout(relocateAddButtons, 1500);
+    setTimeout(relocateAddButtons, 3000);
+  }
+  
+  // 页面加载时执行
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+  
+  // 监听DOM变化以处理React更新
+  const observer = new MutationObserver(function(mutations) {
+    let shouldRelocate = false;
+    
+    mutations.forEach(function(mutation) {
+      if (mutation.addedNodes.length > 0) {
+        mutation.addedNodes.forEach(function(node) {
+          if (node.nodeType === 1) {
+            const hasButton = node.tagName === 'BUTTON' || 
+                            (node.querySelector && node.querySelector('button'));
+            if (hasButton) {
+              shouldRelocate = true;
+            }
+          }
+        });
+      }
+    });
+    
+    if (shouldRelocate) {
+      setTimeout(relocateAddButtons, 200);
+    }
+  });
+  
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+})();
+</script>
