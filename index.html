@@ -296,8 +296,6 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
 
   // 监听DOM变化，当添加新项目时确保按钮保持在底部
   const observer = new MutationObserver(function(mutations) {
-    let shouldRelocate = false;
-
     mutations.forEach(function(mutation) {
       // 检查是否有新节点添加
       if (mutation.addedNodes.length > 0) {
@@ -309,17 +307,16 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
                            node.className.includes('border') ||
                            node.querySelector && node.querySelector('input'));
             if (isCard) {
-              shouldRelocate = true;
+              // 立即执行，不延迟
+              relocateAddButtons();
+              // 再执行一次确保完成
+              setTimeout(relocateAddButtons, 50);
+              setTimeout(relocateAddButtons, 200);
             }
           }
         });
       }
     });
-
-    if (shouldRelocate) {
-      // 当检测到新卡片添加时，重新定位按钮确保它在最后
-      setTimeout(relocateAddButtons, 100);
-    }
   });
 
   observer.observe(document.body, {
@@ -337,51 +334,51 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
 
   // 验证资产信息
   function validateAssets() {
-    // 查找所有资产卡片
+    console.log('Validating assets...');
+
+    // 查找所有资产卡片 - 资产卡片包含select（资产类型）和textarea（资产描述）
     var assetCards = [];
     var allCards = document.querySelectorAll('[class*="p-4"]');
 
     allCards.forEach(function(card) {
-      var inputs = card.querySelectorAll('input');
-      var hasAssetFields = false;
+      var hasSelect = card.querySelector('select') !== null;
+      var hasTextarea = card.querySelector('textarea') !== null;
 
-      inputs.forEach(function(input) {
-        var ph = input.placeholder || '';
-        // 检查是否包含资产相关的placeholder
-        if (ph.includes('BMW') || ph.includes('0.00') ||
-            ph.includes('车辆') || ph.includes('房产') || ph.includes('Vehicle')) {
-          hasAssetFields = true;
-        }
-      });
-
-      if (hasAssetFields) {
+      // 如果同时有下拉选择和文本框，很可能是资产卡片
+      if (hasSelect && hasTextarea) {
         assetCards.push(card);
       }
     });
 
-    // 检查每个资产卡片的描述字段
+    console.log('Found ' + assetCards.length + ' asset cards');
+
+    // 检查每个资产卡片
     for (var i = 0; i < assetCards.length; i++) {
       var card = assetCards[i];
-      var inputs = card.querySelectorAll('input');
-      var hasDescription = false;
 
-      inputs.forEach(function(input) {
-        var ph = input.placeholder || '';
-        // 资产描述字段（如"BMW"）
-        if (ph.includes('BMW') || ph.includes('车辆') || ph.includes('Vehicle')) {
-          var value = input.value.trim();
-          if (value && value.length > 0) {
-            hasDescription = true;
-          }
-        }
-      });
+      // 检查资产类型是否选择
+      var select = card.querySelector('select');
+      var selectValue = select ? select.value : '';
 
-      if (!hasDescription) {
+      // 检查资产描述是否填写
+      var textarea = card.querySelector('textarea');
+      var textareaValue = textarea ? textarea.value.trim() : '';
+
+      console.log('Asset ' + (i+1) + ': select=' + selectValue + ', textarea=' + textareaValue);
+
+      // 如果资产类型未选择或资产描述为空
+      if (!selectValue || selectValue === '' || selectValue.includes('选择类型')) {
+        alert('错误：第 ' + (i + 1) + ' 项资产的"资产类型"未选择！\n请选择资产类型或删除该资产项。\n\nError: Asset #' + (i + 1) + ' type is not selected!\nPlease select asset type or delete this asset.');
+        return false;
+      }
+
+      if (!textareaValue || textareaValue.length === 0) {
         alert('错误：第 ' + (i + 1) + ' 项资产的"资产项目"未填写！\n请填写资产描述或删除该资产项。\n\nError: Asset #' + (i + 1) + ' description is empty!\nPlease fill in the asset description or delete this asset.');
         return false;
       }
     }
 
+    console.log('All assets validated successfully');
     return true;
   }
 
@@ -438,6 +435,7 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
 
   // 拦截"下一步"按钮点击
   function interceptNextButton() {
+    // 在捕获阶段拦截
     document.addEventListener('click', function(e) {
       var target = e.target;
 
@@ -450,16 +448,26 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
       if (!target) return;
 
       var buttonText = target.textContent || '';
+      console.log('Button clicked:', buttonText);
 
       // 检查是否是"下一步"按钮
       if (buttonText.includes('下一步') || buttonText.includes('Next')) {
-        // 判断当前在哪个页面
-        var pageTitle = document.querySelector('h1, h2');
-        var pageTitleText = pageTitle ? pageTitle.textContent : '';
+        console.log('Next button clicked, validating...');
 
-        // 如果在资产页面
-        if (pageTitleText.includes('资产') || pageTitleText.includes('Asset')) {
+        // 判断当前在哪个页面
+        var pageTitle = document.querySelector('h1, h2, h3');
+        var pageTitleText = pageTitle ? pageTitle.textContent : '';
+        console.log('Page title:', pageTitleText);
+
+        // 检查页面内容来判断当前页面
+        var pageContent = document.body.textContent || '';
+
+        // 如果在资产页面（检查是否有"资产类型"或"资产项目"文本）
+        if (pageTitleText.includes('资产') || pageTitleText.includes('Asset') ||
+            pageContent.includes('资产类型') || pageContent.includes('资产项目')) {
+          console.log('On assets page, validating assets...');
           if (!validateAssets()) {
+            console.log('Asset validation failed, preventing navigation');
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
@@ -469,7 +477,9 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
 
         // 如果在受益人页面
         if (pageTitleText.includes('受益人') || pageTitleText.includes('Beneficiar')) {
+          console.log('On beneficiaries page, validating beneficiaries...');
           if (!validateBeneficiaries()) {
+            console.log('Beneficiary validation failed, preventing navigation');
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
@@ -477,7 +487,47 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
           }
         }
       }
-    }, true); // 使用捕获阶段，确保在React之前拦截
+    }, true); // 使用捕获阶段
+
+    // 同时在冒泡阶段也拦截，确保万无一失
+    document.addEventListener('click', function(e) {
+      var target = e.target;
+
+      while (target && target.tagName !== 'BUTTON') {
+        target = target.parentElement;
+        if (!target || target === document.body) return;
+      }
+
+      if (!target) return;
+
+      var buttonText = target.textContent || '';
+
+      if (buttonText.includes('下一步') || buttonText.includes('Next')) {
+        var pageContent = document.body.textContent || '';
+
+        if (pageContent.includes('资产类型') || pageContent.includes('资产项目')) {
+          if (!validateAssets()) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return false;
+          }
+        }
+
+        if (pageContent.includes('受益人') && !pageContent.includes('添加受益人')) {
+          var pageTitle = document.querySelector('h1, h2, h3');
+          var pageTitleText = pageTitle ? pageTitle.textContent : '';
+          if (pageTitleText.includes('受益人') || pageTitleText.includes('Beneficiar')) {
+            if (!validateBeneficiaries()) {
+              e.preventDefault();
+              e.stopPropagation();
+              e.stopImmediatePropagation();
+              return false;
+            }
+          }
+        }
+      }
+    }, false); // 冒泡阶段
   }
 
   // 页面加载后启动拦截
