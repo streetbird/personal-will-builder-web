@@ -228,94 +228,113 @@ DISCLAIMER: This document is a draft template and may not be legally valid. Will
   });
 })();
 </script>
+<style>
+/* 将添加资产和添加受益人按钮移到列表底部 */
+/* 针对资产和受益人页面的容器 */
+[class*="space-y-6"] > [class*="space-y-4"] {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 将标题和按钮所在的flex容器调整顺序 */
+[class*="space-y-6"] > [class*="space-y-4"] > [class*="flex"][class*="justify-between"] {
+  order: -1;
+}
+
+/* 将"添加资产"和"添加受益人"按钮移到底部 */
+[class*="space-y-6"] > [class*="space-y-4"] > [class*="flex"][class*="justify-between"]:has(button:first-child) button:first-child {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+}
+
+/* 在列表后添加按钮的容器样式 */
+@media (max-width: 768px) {
+  /* 移动端优化：确保按钮在列表底部可见 */
+  [class*="space-y-4"] {
+    position: relative;
+  }
+}
+</style>
+
 <script>
-// 将"添加资产"和"添加受益人"按钮移动到列表底部
+// 更可靠的按钮重定位脚本
 (function() {
   'use strict';
   
-  window.addEventListener('load', function() {
-    console.log('Button relocation script loaded');
-    
-    // 使用MutationObserver监听DOM变化
-    const observer = new MutationObserver(function() {
-      relocateButtons();
+  function relocateButtons() {
+    // 查找所有包含"添加资产"或"添加受益人"的按钮
+    const addButtons = Array.from(document.querySelectorAll('button')).filter(btn => {
+      const text = btn.textContent || '';
+      return text.includes('添加资产') || text.includes('Add Asset') || 
+             text.includes('添加受益人') || text.includes('Add Beneficiary');
     });
     
-    // 监听整个文档的子节点变化
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-    
-    // 初始化时也执行一次
-    setTimeout(relocateButtons, 1000);
-    
-    function relocateButtons() {
-      // 处理"添加资产"按钮
-      relocateAddButton('addAsset', '添加资产', 'Add Asset');
+    addButtons.forEach(function(originalButton) {
+      if (originalButton.getAttribute('data-relocated')) return;
+      originalButton.setAttribute('data-relocated', 'true');
       
-      // 处理"添加受益人"按钮
-      relocateAddButton('addBeneficiary', '添加受益人', 'Add Beneficiary');
-    }
-    
-    function relocateAddButton(buttonType, chineseText, englishText) {
-      // 查找包含"添加资产"或"添加受益人"文本的按钮
-      const buttons = document.querySelectorAll('button');
-      let targetButton = null;
+      // 找到按钮所在的卡片容器
+      let cardContainer = originalButton.closest('[class*="space-y-4"]');
+      if (!cardContainer) return;
       
-      buttons.forEach(function(btn) {
-        const text = btn.textContent || '';
-        if (text.includes(chineseText) || text.includes(englishText)) {
-          targetButton = btn;
-        }
-      });
+      // 创建底部按钮容器
+      const buttonType = originalButton.textContent.includes('资产') || originalButton.textContent.includes('Asset') ? 'asset' : 'beneficiary';
+      let bottomButtonContainer = cardContainer.querySelector('.bottom-add-button-' + buttonType);
       
-      if (!targetButton) return;
-      
-      // 标记按钮已处理
-      if (targetButton.getAttribute('data-relocated') === 'true') return;
-      targetButton.setAttribute('data-relocated', 'true');
-      
-      // 找到按钮所在的容器
-      let container = targetButton.closest('[class*="space-y"]');
-      if (!container) return;
-      
-      // 找到列表容器（包含所有条目的容器）
-      let listContainer = container.querySelector('[class*="space-y"]');
-      if (!listContainer) {
-        // 如果没有找到，说明按钮本身就在主容器中
-        listContainer = container;
-      }
-      
-      // 找到按钮的父元素（通常是一个flex容器）
-      const buttonParent = targetButton.parentElement;
-      if (!buttonParent) return;
-      
-      // 移除按钮的原始位置
-      buttonParent.style.display = 'none';
-      
-      // 创建一个新的容器来放置按钮在底部
-      let bottomContainer = container.querySelector('.relocated-button-container-' + buttonType);
-      if (!bottomContainer) {
-        bottomContainer = document.createElement('div');
-        bottomContainer.className = 'relocated-button-container-' + buttonType;
-        bottomContainer.style.cssText = 'margin-top: 1rem; display: flex; justify-content: center;';
+      if (!bottomButtonContainer) {
+        bottomButtonContainer = document.createElement('div');
+        bottomButtonContainer.className = 'bottom-add-button-' + buttonType;
+        bottomButtonContainer.style.cssText = 'display: flex; justify-content: center; margin-top: 1rem; width: 100%;';
         
         // 克隆按钮
-        const newButton = targetButton.cloneNode(true);
+        const newButton = originalButton.cloneNode(true);
         newButton.removeAttribute('data-relocated');
         
-        // 确保新按钮的点击事件正常工作
-        newButton.addEventListener('click', function() {
-          targetButton.click();
-        });
+        // 保持原按钮的所有事件处理器
+        const originalClickHandler = originalButton.onclick;
+        newButton.onclick = function(e) {
+          if (originalClickHandler) {
+            originalClickHandler.call(originalButton, e);
+          } else {
+            originalButton.click();
+          }
+        };
         
-        bottomContainer.appendChild(newButton);
+        bottomButtonContainer.appendChild(newButton);
+        cardContainer.appendChild(bottomButtonContainer);
         
-        // 将按钮容器添加到列表容器的末尾
-        container.appendChild(bottomContainer);
+        // 隐藏原按钮（但不删除，保持事件处理器）
+        originalButton.style.cssText = 'position: absolute; left: -9999px; top: -9999px;';
       }
+    });
+  }
+  
+  // 页面加载完成后执行
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(relocateButtons, 500);
+    });
+  } else {
+    setTimeout(relocateButtons, 500);
+  }
+  
+  // 监听React可能的更新
+  const observer = new MutationObserver(function(mutations) {
+    // 检查是否有新按钮添加
+    const hasNewButtons = mutations.some(m => 
+      Array.from(m.addedNodes).some(node => 
+        node.nodeType === 1 && node.querySelector && node.querySelector('button')
+      )
+    );
+    if (hasNewButtons) {
+      setTimeout(relocateButtons, 100);
     }
+  });
+  
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
   });
 })();
 </script>
